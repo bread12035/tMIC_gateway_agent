@@ -17,12 +17,18 @@ def _setup(storage):
     storage.seed("ws", "workspaces/earnings-agent/SOUL.md", "earnings soul")
     storage.seed("ws", "workspaces/earnings-agent/AGENTS.md", "earnings agents")
     storage.seed(
-        "ws", "workspaces/earnings-agent/skills/a/SKILL.md", "earnings skill"
+        "ws",
+        "workspaces/earnings-agent/skills/transcript-summary/SKILL.md",
+        "earnings skill",
     )
     # Sub agent workspace
     storage.seed("ws", "workspaces/risk-agent/SOUL.md", "risk soul")
     storage.seed("ws", "workspaces/risk-agent/AGENTS.md", "risk agents")
-    storage.seed("ws", "workspaces/risk-agent/skills/b/SKILL.md", "risk skill")
+    storage.seed(
+        "ws",
+        "workspaces/risk-agent/skills/risk-scoring/SKILL.md",
+        "risk skill",
+    )
     storage.seed("ws", "shared/policies.md", "global policies")
 
 
@@ -55,7 +61,7 @@ def test_share_workspace_copies_parent_md():
     # Inherited from parent
     assert ws.md_files["SOUL.md"] == "earnings soul"
     # Sub-agent's own skills are loaded regardless
-    assert "b" in ws.skills
+    assert "risk-scoring" in ws.skills
 
 
 def test_isolated_workspace_loads_sub_agent_md():
@@ -72,7 +78,7 @@ def test_isolated_workspace_loads_sub_agent_md():
         extra_md_files=None,
     )
     assert ws.md_files["SOUL.md"] == "risk soul"
-    assert "b" in ws.skills
+    assert "risk-scoring" in ws.skills
 
 
 def test_extra_md_files_merged():

@@ -1,13 +1,13 @@
-"""run_skill and the Skill Registry whitelist (SDD §8).
+"""run_safe_script and the Safe Script Registry whitelist (SDD §8).
 
 Enforces:
 
-* Whitelist — only skills registered in `SKILL_REGISTRY` run.
+* Whitelist — only scripts registered in `SAFE_SCRIPT_REGISTRY` run.
 * Path-traversal defence — the resolved script path must stay inside
   `SKILLS_BASE_PATH`.
-* Subprocess isolation — skill runs in a fresh Python subprocess with a
+* Subprocess isolation — the script runs in a fresh Python subprocess with a
   scrubbed environment (no API keys) and a restricted PATH.
-* Timeout per skill config.
+* Timeout per script config.
 * Structured stdout JSON contract; stderr captured to `last_stderr`.
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ from typing import Any, Dict, Optional
 
 
 # ── Default registry ───────────────────────────────────────────────────
-SKILL_REGISTRY: Dict[str, Dict[str, Any]] = {
+SAFE_SCRIPT_REGISTRY: Dict[str, Dict[str, Any]] = {
     "transcript_summary": {
         "script": "transcript-summary/scripts/summarize.py",
         "timeout": 120,
@@ -35,11 +35,11 @@ SKILL_REGISTRY: Dict[str, Dict[str, Any]] = {
 }
 
 
-# Env variables that must NOT leak to skill subprocesses.
+# Env variables that must NOT leak to script subprocesses.
 SENSITIVE_ENV_PREFIXES = ("ANTHROPIC_", "OPENAI_", "GOOGLE_", "DATA_API_")
 SENSITIVE_ENV_EXACT = {"API_KEY", "SECRET", "TOKEN"}
 
-# Restricted PATH exposed to skill subprocesses.
+# Restricted PATH exposed to script subprocesses.
 RESTRICTED_PATH = "/usr/bin:/usr/local/bin"
 
 
@@ -60,15 +60,15 @@ def _sanitise_env() -> Dict[str, str]:
     return clean
 
 
-def run_skill(
+def run_safe_script(
     name: str,
     params: Optional[Dict[str, Any]] = None,
     input_file: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Execute a whitelisted skill script in a subprocess.
+    """Execute a whitelisted script in a subprocess.
 
     Args:
-        name: Registry key (must be in `SKILL_REGISTRY`).
+        name: Registry key (must be in `SAFE_SCRIPT_REGISTRY`).
         params: Dict passed to the script as `--params <json>`.
         input_file: Optional path under the task workspace to pass through.
 
@@ -79,12 +79,12 @@ def run_skill(
 
     services = get_services()
 
-    if name not in SKILL_REGISTRY:
-        err = f"Skill {name!r} not in registry"
-        services.ctx.record_audit("run_skill", {"skill_name": name}, False, 0, error=err)
+    if name not in SAFE_SCRIPT_REGISTRY:
+        err = f"Script {name!r} not in registry"
+        services.ctx.record_audit("run_safe_script", {"script_name": name}, False, 0, error=err)
         return {"success": False, "error": err}
 
-    spec = SKILL_REGISTRY[name]
+    spec = SAFE_SCRIPT_REGISTRY[name]
     base = _skills_base()
     script_path = (base / spec["script"]).resolve()
 
@@ -93,12 +93,12 @@ def run_skill(
         script_path.relative_to(base)
     except ValueError:
         err = f"Resolved script path {script_path} escapes {base}"
-        services.ctx.record_audit("run_skill", {"skill_name": name}, False, 0, error=err)
+        services.ctx.record_audit("run_safe_script", {"script_name": name}, False, 0, error=err)
         return {"success": False, "error": err}
 
     if not script_path.exists():
-        err = f"Skill script not found: {script_path}"
-        services.ctx.record_audit("run_skill", {"skill_name": name}, False, 0, error=err)
+        err = f"Script not found: {script_path}"
+        services.ctx.record_audit("run_safe_script", {"script_name": name}, False, 0, error=err)
         return {"success": False, "error": err}
 
     workspace_dir = get_workspace_dir()
@@ -132,7 +132,7 @@ def run_skill(
     except subprocess.TimeoutExpired as e:
         duration_ms = int((_time.perf_counter() - start) * 1000)
         services.ctx.record_audit(
-            "run_skill", {"skill_name": name, "cmd": shlex.join(cmd)},
+            "run_safe_script", {"script_name": name, "cmd": shlex.join(cmd)},
             False, duration_ms, error=f"timeout after {timeout}s",
         )
         return {"success": False, "error": f"timeout after {timeout}s", "stderr": str(e)}
@@ -148,8 +148,8 @@ def run_skill(
             parsed = None
 
     services.ctx.record_audit(
-        "run_skill",
-        {"skill_name": name, "returncode": proc.returncode},
+        "run_safe_script",
+        {"script_name": name, "returncode": proc.returncode},
         success, duration_ms,
         error=None if success else (proc.stderr[-200:] if proc.stderr else "non-zero exit"),
     )
