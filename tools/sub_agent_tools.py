@@ -135,6 +135,8 @@ def _resolve_sub_agent_workspace(
         sub_route.workspace if sub_route else f"workspaces/{sub_agent_id}"
     )
 
+    sub_enabled_skills = sub_route.skills if sub_route else None
+
     if share_workspace:
         # Shallow copy of parent workspace
         parent_ws = load_workspace(
@@ -151,10 +153,20 @@ def _resolve_sub_agent_workspace(
             skills={},
         )
     else:
-        workspace = load_workspace(sub_services, sub_workspace_prefix, sub_agent_id)
+        workspace = load_workspace(
+            sub_services,
+            sub_workspace_prefix,
+            sub_agent_id,
+            enabled_skills=sub_enabled_skills,
+        )
 
-    # Always load the sub-agent's own skills
-    sub_ws = load_workspace(sub_services, sub_workspace_prefix, sub_agent_id)
+    # Always load the sub-agent's own registered skills
+    sub_ws = load_workspace(
+        sub_services,
+        sub_workspace_prefix,
+        sub_agent_id,
+        enabled_skills=sub_enabled_skills,
+    )
     workspace.skills.update(sub_ws.skills)
 
     # Extra MD files

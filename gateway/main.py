@@ -116,8 +116,13 @@ class Gateway:
             prefetched = prefetcher.prefetch(data_sources, workspace_dir)
             state.record_prefetch([p.to_task_state() for p in prefetched])
 
-            # 3. Load workspace MD files
-            workspace = load_workspace(services, route.workspace, route.agent_id)
+            # 3. Load workspace MD files (only skills registered on the route)
+            workspace = load_workspace(
+                services,
+                route.workspace,
+                route.agent_id,
+                enabled_skills=route.skills,
+            )
 
             # 4. Assemble boot-sequence system prompt
             system_prompt = assemble_system_prompt(

@@ -22,7 +22,7 @@ GKE container:
 1. Gateway owns the **control plane** (routing, prefetch, output collection,
    task state). Agent Runtime owns **reasoning & tool execution**.
 2. Gateway never calls LLMs; Agent Runtime never directly touches GCS/Pub/Sub.
-3. Agents have **no shell** — only whitelisted Python skills via `run_skill`.
+3. Agents have **no shell** — only whitelisted Python scripts via `run_safe_script`.
 4. Each message = **stateless session** (LangGraph `MemorySaver` is
    in-memory only and discarded after each invocation).
 5. Department-facing Pub/Sub messages contain only **domain fields**; the
@@ -41,6 +41,22 @@ pip install -r requirements.txt
 cp .env.example .env       # fill in values
 python -m gateway.main     # starts the Pub/Sub pull loop
 ```
+
+## Manually triggering a task (kubectl)
+
+For operational use on GKE, a task can be driven without publishing a
+Pub/Sub message. The Route Registry is still consulted the usual way —
+you only supply the subscription key and the domain payload:
+
+```bash
+kubectl exec -it <gateway-pod> -- \
+    python -m gateway.manual_trigger earnings-summary-sub \
+        '{"company":"TSMC","fiscal_year":2026,"fiscal_quarter":1}'
+```
+
+The same pipeline as a Pub/Sub delivery runs end-to-end (prefetch →
+workspace load → prompt assembly → agent runtime → output collection →
+task state writeback). The serialised task state is printed to stdout.
 
 ## Running tests
 

@@ -4,7 +4,7 @@ This package exposes three categories of tools:
 
 1. Thin wrappers over GatewayServices (`data_tools`).
 2. Messaging / orchestration (`messaging_tools`, `sub_agent_tools`).
-3. Subprocess skill execution (`skill_executor`).
+3. Subprocess script execution (`safe_script_executor`).
 
 Tools are regular Python callables so the same code can be used both from
 the LangGraph runtime (via `@tool` decorators) and from the unit tests.
@@ -45,7 +45,7 @@ def get_workspace_dir() -> str:
 
 from .data_tools import read_data, write_data, write_output  # noqa: E402
 from .messaging_tools import send_task  # noqa: E402
-from .skill_executor import SKILL_REGISTRY, run_skill  # noqa: E402
+from .safe_script_executor import SAFE_SCRIPT_REGISTRY, run_safe_script  # noqa: E402
 from .sub_agent_tools import invoke_sub_agent  # noqa: E402
 
 
@@ -53,7 +53,7 @@ ALL_TOOLS = [
     read_data,
     write_data,
     write_output,
-    run_skill,
+    run_safe_script,
     send_task,
     invoke_sub_agent,
 ]
@@ -62,9 +62,9 @@ ALL_TOOLS = [
 def build_tools(enabled_skills: List[str]) -> List:
     """Return the list of tools the agent should be given for this task.
 
-    `enabled_skills` is informational only — `run_skill` itself enforces the
-    whitelist via `SKILL_REGISTRY`. We still pass the list so the agent's
-    system prompt / TOOLS.md can present the right subset.
+    `enabled_skills` is informational only — `run_safe_script` itself enforces
+    the whitelist via `SAFE_SCRIPT_REGISTRY`. We still pass the list so the
+    agent's system prompt / TOOLS.md can present the right subset.
     """
     return list(ALL_TOOLS)
 
@@ -76,10 +76,10 @@ __all__ = [
     "read_data",
     "write_data",
     "write_output",
-    "run_skill",
+    "run_safe_script",
     "send_task",
     "invoke_sub_agent",
-    "SKILL_REGISTRY",
+    "SAFE_SCRIPT_REGISTRY",
     "ALL_TOOLS",
     "build_tools",
 ]

@@ -65,10 +65,10 @@ def wired_gateway(tmp_path):
         # Use the wrappers directly — they're bound to the current services
         result = tools.read_data("inputs/Q1.txt")
         assert result["success"], result
-        skill_result = tools.run_skill(
+        script_result = tools.run_safe_script(
             "transcript_summary", params={"input_path": "inputs/Q1.txt"}
         )
-        assert skill_result["success"], skill_result
+        assert script_result["success"], script_result
         tools.write_output("final.txt", f"len={len(result['content'])}")
 
         return {

@@ -1,4 +1,4 @@
-"""Tests for run_skill — whitelist, path traversal, env scrubbing, execution."""
+"""Tests for run_safe_script — whitelist, path traversal, env scrubbing, execution."""
 from __future__ import annotations
 
 import os
@@ -10,7 +10,7 @@ import tools
 from gateway.context import AgentContext
 from gateway.services import GatewayServices
 from gateway.storage_backend import InMemoryStorageBackend
-from tools import skill_executor
+from tools import safe_script_executor
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -44,27 +44,27 @@ def initialised_tools(monkeypatch):
     shutil.rmtree(tmp, ignore_errors=True)
 
 
-def test_run_skill_rejects_unregistered(initialised_tools):
-    result = tools.run_skill("not_a_skill")
+def test_run_safe_script_rejects_unregistered(initialised_tools):
+    result = tools.run_safe_script("not_a_script")
     assert not result["success"]
     assert "registry" in result["error"]
 
 
-def test_run_skill_executes_transcript_summary(initialised_tools):
+def test_run_safe_script_executes_transcript_summary(initialised_tools):
     svc, tmp = initialised_tools
-    result = tools.run_skill(
+    result = tools.run_safe_script(
         "transcript_summary",
         params={"input_path": "inputs/Q1.txt", "max_sentences": 2},
     )
     assert result["success"], result
     assert result["parsed"]["word_count"] > 0
-    # The skill should have written summary.json into outputs/
+    # The script should have written summary.json into outputs/
     assert os.path.exists(os.path.join(tmp, "outputs", "summary.json"))
 
 
-def test_run_skill_executes_financial_extraction(initialised_tools):
+def test_run_safe_script_executes_financial_extraction(initialised_tools):
     svc, tmp = initialised_tools
-    result = tools.run_skill(
+    result = tools.run_safe_script(
         "financial_extraction", params={"input_path": "inputs/Q1.txt"}
     )
     assert result["success"], result
@@ -72,14 +72,14 @@ def test_run_skill_executes_financial_extraction(initialised_tools):
     assert os.path.exists(os.path.join(tmp, "outputs", "key_metrics.csv"))
 
 
-def test_run_skill_path_traversal_blocked(initialised_tools, monkeypatch):
+def test_run_safe_script_path_traversal_blocked(initialised_tools, monkeypatch):
     # Temporarily add a malicious entry pointing outside SKILLS_BASE_PATH
     monkeypatch.setitem(
-        skill_executor.SKILL_REGISTRY,
+        safe_script_executor.SAFE_SCRIPT_REGISTRY,
         "evil",
         {"script": "../../../etc/passwd", "timeout": 5},
     )
-    result = tools.run_skill("evil")
+    result = tools.run_safe_script("evil")
     assert not result["success"]
     assert ("escapes" in result["error"]) or ("not found" in result["error"])
 
@@ -89,9 +89,9 @@ def test_sensitive_env_vars_are_scrubbed(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-secret")
     monkeypatch.setenv("DATA_API_KEY", "d-secret")
     monkeypatch.setenv("UNRELATED", "safe")
-    clean = skill_executor._sanitise_env()
+    clean = safe_script_executor._sanitise_env()
     assert "ANTHROPIC_API_KEY" not in clean
     assert "OPENAI_API_KEY" not in clean
     assert "DATA_API_KEY" not in clean
     assert clean.get("UNRELATED") == "safe"
-    assert clean["PATH"] == skill_executor.RESTRICTED_PATH
+    assert clean["PATH"] == safe_script_executor.RESTRICTED_PATH
