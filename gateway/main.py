@@ -113,7 +113,9 @@ class Gateway:
 
             # 2. Prefetch inputs to local workspace
             prefetcher = DataPrefetcher(self.storage)
-            prefetched = prefetcher.prefetch(data_sources, workspace_dir)
+            prefetched = prefetcher.prefetch(
+                data_sources, workspace_dir, domain_fields=raw
+            )
             state.record_prefetch([p.to_task_state() for p in prefetched])
 
             # 3. Load workspace MD files (only skills registered on the route)
