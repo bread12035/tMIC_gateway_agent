@@ -265,6 +265,16 @@ def run_forever() -> None:  # pragma: no cover — infra glue
         publisher=_publish,
     )
 
+    # CronScheduler — time-based tasks that self-publish into the pipeline.
+    if os.environ.get("CRON_SCHEDULER_ENABLED", "true").lower() != "false":
+        from .cron_registry import CRON_REGISTRY
+        from .scheduler import CronScheduler
+
+        scheduler = CronScheduler(publisher=_publish, project_id=project_id)
+        scheduler.register_all(list(CRON_REGISTRY.values()))
+        scheduler.start()
+        logger.info("CronScheduler started: %d tasks", len(CRON_REGISTRY))
+
     flow_control = pubsub_v1.types.FlowControl(max_messages=1)
     futures = []
     for sub in subscriptions:
