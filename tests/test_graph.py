@@ -79,3 +79,12 @@ def test_should_continue_respects_iteration_cap():
     ai = FakeAI("calling", [{"name": "t"}])
     messages = [FakeAI("m", [{"name": "t"}]) for _ in range(10)] + [ai]
     assert should_continue({"messages": messages}, {"max_iterations": 10}) == "finalize"
+
+
+def test_split_tools_separates_server_and_client_tools():
+    from agent.graph import _split_tools
+    from tools import WEB_SEARCH_TOOL, read_data, write_data
+
+    client, server = _split_tools([read_data, WEB_SEARCH_TOOL, write_data])
+    assert client == [read_data, write_data]
+    assert server == [WEB_SEARCH_TOOL]

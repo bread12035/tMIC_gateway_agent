@@ -86,3 +86,42 @@ def test_tools_require_initialisation():
     tools._workspace_dir = None
     with pytest.raises(RuntimeError):
         tools.read_data("x")
+
+
+def test_web_search_tool_has_expected_shape():
+    spec = tools.WEB_SEARCH_TOOL
+    assert spec["type"] == "web_search_20260209"
+    assert spec["name"] == "web_search"
+    assert spec["max_uses"] >= 1
+    assert tools.is_server_tool(spec)
+
+
+def test_build_web_search_tool_accepts_overrides():
+    spec = tools.build_web_search_tool(
+        max_uses=3,
+        allowed_domains=["example.com"],
+        user_location={"type": "approximate", "country": "TW"},
+    )
+    assert spec["max_uses"] == 3
+    assert spec["allowed_domains"] == ["example.com"]
+    assert spec["user_location"]["country"] == "TW"
+    assert "blocked_domains" not in spec
+
+
+def test_build_web_search_tool_rejects_conflicting_domain_lists():
+    with pytest.raises(ValueError):
+        tools.build_web_search_tool(
+            allowed_domains=["a.com"], blocked_domains=["b.com"]
+        )
+
+
+def test_build_tools_includes_web_search():
+    selected = tools.build_tools(enabled_skills=[])
+    assert tools.WEB_SEARCH_TOOL in selected
+    server_tools = [t for t in selected if tools.is_server_tool(t)]
+    assert server_tools == [tools.WEB_SEARCH_TOOL]
+
+
+def test_is_server_tool_rejects_non_server_entries():
+    assert tools.is_server_tool({"type": "custom_tool"}) is False
+    assert tools.is_server_tool(tools.read_data) is False
