@@ -7,11 +7,30 @@ entirely by passing a synthetic `AgentRunner` to `Gateway`.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
+
+from tools.search_tools import is_server_tool
 
 from .nodes import finalize_node, should_continue
 
 logger = logging.getLogger(__name__)
+
+
+def _split_tools(tools: List[Any]) -> Tuple[List[Any], List[Any]]:
+    """Partition the tool list into (client-side callables, server-side specs).
+
+    Server tools (e.g. Anthropic's ``web_search_20260209``) are executed by
+    the Claude API and must be declared to the LLM but excluded from
+    LangGraph's ``ToolNode``, which only dispatches client-side callables.
+    """
+    client_tools: List[Any] = []
+    server_tools: List[Any] = []
+    for t in tools:
+        if is_server_tool(t):
+            server_tools.append(t)
+        else:
+            client_tools.append(t)
+    return client_tools, server_tools
 
 
 def _build_graph(tools: List[Any], llm_model: str, max_iterations: int):
@@ -27,13 +46,19 @@ def _build_graph(tools: List[Any], llm_model: str, max_iterations: int):
         outcome: Dict[str, Any] | None
         tool_call_log: List[Dict[str, Any]]
 
-    llm = ChatAnthropic(model=llm_model).bind_tools(tools)
+    client_tools, server_tools = _split_tools(tools)
+
+    # Bind every tool (client + server) to the LLM so Claude can invoke any
+    # of them; server tools are passed through as raw dict specs.
+    llm = ChatAnthropic(model=llm_model).bind_tools([*client_tools, *server_tools])
 
     def model_node(state):  # AgentState
         response = llm.invoke(state["messages"])
         return {"messages": [response]}
 
-    tool_node = ToolNode(tools)
+    # ToolNode only dispatches client-side callables — server tools are
+    # executed by the Claude API and come back as inline content blocks.
+    tool_node = ToolNode(client_tools)
 
     def _should_continue(state):
         return should_continue(state, {"max_iterations": max_iterations})

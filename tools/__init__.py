@@ -46,10 +46,16 @@ def get_workspace_dir() -> str:
 from .data_tools import read_data, write_data, write_output  # noqa: E402
 from .messaging_tools import send_task  # noqa: E402
 from .safe_script_executor import SAFE_SCRIPT_REGISTRY, run_safe_script  # noqa: E402
+from .search_tools import (  # noqa: E402
+    WEB_SEARCH_TOOL,
+    build_web_search_tool,
+    is_server_tool,
+)
 from .sub_agent_tools import invoke_sub_agent  # noqa: E402
 
 
-ALL_TOOLS = [
+# Client-side callables — executed by LangGraph's ToolNode.
+CLIENT_TOOLS = [
     read_data,
     write_data,
     write_output,
@@ -58,6 +64,11 @@ ALL_TOOLS = [
     invoke_sub_agent,
 ]
 
+# Server-side tools — declared to the Claude API and executed by Anthropic.
+SERVER_TOOLS = [WEB_SEARCH_TOOL]
+
+ALL_TOOLS = [*CLIENT_TOOLS, *SERVER_TOOLS]
+
 
 def build_tools(enabled_skills: List[str]) -> List:
     """Return the list of tools the agent should be given for this task.
@@ -65,6 +76,10 @@ def build_tools(enabled_skills: List[str]) -> List:
     `enabled_skills` is informational only — `run_safe_script` itself enforces
     the whitelist via `SAFE_SCRIPT_REGISTRY`. We still pass the list so the
     agent's system prompt / TOOLS.md can present the right subset.
+
+    The returned list includes both client-side callables (dispatched by
+    LangGraph's ToolNode) and Anthropic server-side tool descriptors such
+    as `web_search_20260209` (executed by the Claude API directly).
     """
     return list(ALL_TOOLS)
 
@@ -79,7 +94,12 @@ __all__ = [
     "run_safe_script",
     "send_task",
     "invoke_sub_agent",
+    "WEB_SEARCH_TOOL",
+    "build_web_search_tool",
+    "is_server_tool",
     "SAFE_SCRIPT_REGISTRY",
+    "CLIENT_TOOLS",
+    "SERVER_TOOLS",
     "ALL_TOOLS",
     "build_tools",
 ]
