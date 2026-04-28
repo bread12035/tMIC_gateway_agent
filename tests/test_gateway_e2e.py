@@ -81,7 +81,9 @@ def wired_gateway(tmp_path):
             "iteration_count": 2,
         }
 
-    # Override the default registry with bucket names matching the config
+    # Override the default registry with bucket names matching the config.
+    # Snapshot the original entry so other tests see the default registry.
+    original_route = ROUTE_REGISTRY.get("earnings-summary-sub")
     register_route(
         "earnings-summary-sub",
         RouteConfig(
@@ -120,7 +122,13 @@ def wired_gateway(tmp_path):
     os.environ["SKILLS_BASE_PATH"] = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "skills")
     )
-    yield gateway, storage, runner_calls
+    try:
+        yield gateway, storage, runner_calls
+    finally:
+        if original_route is not None:
+            ROUTE_REGISTRY["earnings-summary-sub"] = original_route
+        else:
+            ROUTE_REGISTRY.pop("earnings-summary-sub", None)
 
 
 def test_handle_message_full_lifecycle(wired_gateway):

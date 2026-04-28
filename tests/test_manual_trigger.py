@@ -13,7 +13,12 @@ import pytest
 import tools  # noqa: F401 — ensures package import side-effects
 from gateway.main import Gateway, GatewayConfig
 from gateway.manual_trigger import trigger_task
-from gateway.route_registry import DataSource, RouteConfig, register_route
+from gateway.route_registry import (
+    DataSource,
+    ROUTE_REGISTRY,
+    RouteConfig,
+    register_route,
+)
 from gateway.storage_backend import InMemoryStorageBackend
 
 
@@ -49,6 +54,7 @@ def wired_gateway(tmp_path):
             "iteration_count": 0,
         }
 
+    original_route = ROUTE_REGISTRY.get("earnings-summary-sub")
     register_route(
         "earnings-summary-sub",
         RouteConfig(
@@ -83,7 +89,13 @@ def wired_gateway(tmp_path):
     os.environ["SKILLS_BASE_PATH"] = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "skills")
     )
-    return gateway, storage, runner_calls
+    try:
+        yield gateway, storage, runner_calls
+    finally:
+        if original_route is not None:
+            ROUTE_REGISTRY["earnings-summary-sub"] = original_route
+        else:
+            ROUTE_REGISTRY.pop("earnings-summary-sub", None)
 
 
 def test_trigger_task_runs_pipeline_without_pubsub(wired_gateway):
